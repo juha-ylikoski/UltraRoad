@@ -1,24 +1,31 @@
 from fastapi import FastAPI, File, UploadFile
 from PIL import Image
+import uvicorn
 from numpy import asarray
 import io
 
-#Only used for "/" Feel free to delete if no longer used
-#/static and /templates can also be deleted
+# Only used for "/" Feel free to delete if no longer used
+# /static and /templates can also be deleted
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from starlette.requests import Request
 from starlette.templating import Jinja2Templates
+
 templates = Jinja2Templates(directory="templates")
 app = FastAPI()
 app.mount("/static", StaticFiles(directory="static"), name="static")
+
+
 @app.get("/", response_class=HTMLResponse)
 async def index(request: Request):
     """
     Homepage displaying the image submission form.
     """
     return templates.TemplateResponse("index.html", {"request": request})
-#END OF "/"
+
+
+# END OF "/"
+
 
 @app.post("/poggers/")
 async def upload_image(file: UploadFile = File(...)):
@@ -29,3 +36,7 @@ async def upload_image(file: UploadFile = File(...)):
     with open(file.filename, "wb") as f:
         f.write(contents)
     return {"filename": file.filename}
+
+
+if __name__ == "__main__":
+    uvicorn.run(app, host="0.0.0.0", port=8000)
