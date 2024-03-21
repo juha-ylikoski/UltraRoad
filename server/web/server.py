@@ -57,7 +57,7 @@ async def upload_image(
     db: Session = Depends(get_db),
 ) -> int:
     image = await file.read()
-    if x_kind not in models.get_kinds(db):
+    if x_kind not in [x.name for x in models.get_kinds(db)]:
         raise HTTPException(status_code=400, detail="Kind not allowed!")
     return models.create_post(
         db, x_latitude, x_longitude, x_text, image, x_kind, x_title, x_address
