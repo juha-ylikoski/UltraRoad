@@ -1,0 +1,39 @@
+version: "3.8"
+services:
+  server:
+    build:
+      context: ./server
+    volumes:
+      - ./server:/code
+    ports:
+        - 5000:8000
+    environment:
+      - POSTGRES_PASSWORD=S3cret
+      - POSTGRES_USER=citizix_user
+      - POSTGRES_DB=db
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+    command: ["uvicorn", "web.server:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+
+  adminer:
+    image: michalhosna/adminer
+    ports:
+        - 8080:8080
+    environment:
+        ADMINER_DB: db
+        ADMINER_DRIVER: pgsql
+        ADMINER_PASSWORD: S3cret
+        ADMINER_SERVER: postgres
+        ADMINER_USERNAME: citizix_user
+        ADMINER_AUTOLOGIN: 1
+        ADMINER_NAME: This will be in the title!
+
+  postgres:
+    image: postgres:14-alpine
+    volumes:
+      - ./data/dev:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_PASSWORD=S3cret
+      - POSTGRES_USER=citizix_user
+      - POSTGRES_DB=db
+
+

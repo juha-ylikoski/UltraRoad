@@ -1,0 +1,17 @@
+@startuml issue reporting sequence
+
+title Sequence of reporting an issue
+
+actor User
+participant server
+database db
+
+User --> server: Image
+server --> User: Annotated title, description & class
+
+User --> User: Modify title, descrition & class
+
+User --> server: Create an issue
+server --> server: Validate issue class
+server --> db: save issue
+@enduml
