@@ -11,6 +11,7 @@ services:
       - POSTGRES_PASSWORD=S3cret
       - POSTGRES_USER=citizix_user
       - POSTGRES_DB=db
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
     command: ["uvicorn", "web.server:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
 
   adminer:

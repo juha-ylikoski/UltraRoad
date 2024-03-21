@@ -1,3 +1,4 @@
+import base64
 import random
 from typing import Annotated
 from fastapi import (
@@ -17,11 +18,13 @@ import uvicorn
 import io
 from sqlalchemy.orm import Session
 import sqlalchemy
+from openai import OpenAI
 
 from .annotate import slipsum
 from . import db, models
 from .db import get_db
 from . import schemas
+from .chatgpt import get_openai
 
 
 app = FastAPI(lifespan=db.lifespan)
@@ -79,7 +82,7 @@ async def get_posts(
 async def get_img(
     id: str,
     db: Session = Depends(get_db),
-) -> bytes:
+) -> Response:
     img = models.get_post_img(db, id)
     return Response(content=img, media_type="image/jpeg")
 
@@ -88,23 +91,94 @@ async def get_img(
 async def upvote(
     id: str,
     db: Session = Depends(get_db),
-) -> bytes:
+):
     models.upvote(db, id)
 
 
 class AnnotatedModel(BaseModel):
     text: str
     kind: str
+    kind_resp: str
 
 
 @app.post("/annotate")
 async def annotate_image(
     file: UploadFile = File(content_type="image/jpeg"),
     db: Session = Depends(get_db),
+    openai_client: OpenAI = Depends(get_openai),
 ) -> AnnotatedModel:
     contents = await file.read()
-    image = Image.open(io.BytesIO(contents))
-    return AnnotatedModel(text=slipsum(), kind=random.choice(models.get_kinds(db)).name)
+    # make sure it is image
+    Image.open(io.BytesIO(contents))
+    kinds = ", ".join([x.name for x in models.get_kinds(db)])
+    response0 = openai_client.chat.completions.create(
+        model="gpt-4-vision-preview",
+        messages=[
+            {
+                "role": "system",
+                "content": [
+                    {
+                        "type": "text",
+                        "text": "You Should annotate the following image and find anything which is broken or malfunctioning in it.",
+                    },
+                    {
+                        "type": "text",
+                        "text": "Respond in finnish",
+                    },
+                ],
+            },
+            {
+                "role": "user",
+                "content": [
+                    {
+                        "type": "image_url",
+                        "image_url": {
+                            "url": f"data:image/jpeg;base64,{base64.b64encode(contents).decode()}"
+                        },
+                    }
+                ],
+            },
+        ],
+    )
+    response1 = openai_client.chat.completions.create(
+        model="gpt-4-vision-preview",
+        messages=[
+            {
+                "role": "system",
+                "content": [
+                    {
+                        "type": "text",
+                        "text": f"Inspect the following image for any defects broken objects or malfunctions. Can the following image be classified in the following classes {kinds}?",
+                    },
+                    {
+                        "type": "text",
+                        "text": "Respond only with the proper class label.",
+                    },
+                    {
+                        "type": "text",
+                        "text": "The classes are given in finnish and you should respond in finnish.",
+                    },
+                ],
+            },
+            {
+                "role": "user",
+                "content": [
+                    {
+                        "type": "image_url",
+                        "image_url": {
+                            "url": f"data:image/jpeg;base64,{base64.b64encode(contents).decode()}"
+                        },
+                    }
+                ],
+            },
+        ],
+        max_tokens=300,
+    )
+
+    return AnnotatedModel(
+        text=response0.choices[0].message.content,
+        kind=response1.choices[0].message.content,
+    )
 
 
 @app.exception_handler(sqlalchemy.exc.IntegrityError)
