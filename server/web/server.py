@@ -45,8 +45,8 @@ async def new_kind(kind: schemas.Kind, db: Session = Depends(get_db)) -> int:
 
 
 @app.delete("/kind/{name}")
-async def new_kind(name: str, db: Session = Depends(get_db)) -> int:
-    return models.create_kind(db, kind)
+async def delete_kind(name: str, db: Session = Depends(get_db)) -> int:
+    return models.delete_kind(db, name)
 
 
 @app.post("/post")

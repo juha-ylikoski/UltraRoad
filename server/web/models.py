@@ -78,7 +78,8 @@ def create_kind(db: Session, kind: schemas.Kind):
 
 
 def delete_kind(db: Session, name: str):
-    db.query(DBKind).filter(DBKind.name == name).delete()
+    kind = db.query(DBKind).filter(DBKind.name == name).one()
+    db.delete(kind)
     db.commit()
 
 
