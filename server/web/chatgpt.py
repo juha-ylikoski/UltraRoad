@@ -1,7 +1,6 @@
-import os
-from openai import OpenAI
+from openai import AsyncOpenAI
 
 
 async def get_openai():
-    client = OpenAI()
+    client = AsyncOpenAI()
     yield client

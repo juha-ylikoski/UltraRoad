@@ -1,5 +1,4 @@
 import base64
-import random
 from typing import Annotated
 from fastapi import (
     Depends,
@@ -18,7 +17,7 @@ import uvicorn
 import io
 from sqlalchemy.orm import Session
 import sqlalchemy
-from openai import OpenAI
+from openai import AsyncOpenAI
 
 from .annotate import slipsum
 from . import db, models
@@ -98,19 +97,53 @@ async def upvote(
 class AnnotatedModel(BaseModel):
     text: str
     kind: str
+    title: str
 
 
 @app.post("/annotate")
 async def annotate_image(
     file: UploadFile = File(content_type="image/jpeg"),
     db: Session = Depends(get_db),
-    openai_client: OpenAI = Depends(get_openai),
+    openai_client: AsyncOpenAI = Depends(get_openai),
 ) -> AnnotatedModel:
     contents = await file.read()
     # make sure it is image
     Image.open(io.BytesIO(contents))
     kinds = ", ".join([x.name for x in models.get_kinds(db)])
-    response0 = openai_client.chat.completions.create(
+    pred_title = openai_client.chat.completions.create(
+        model="gpt-4-vision-preview",
+        messages=[
+            {
+                "role": "system",
+                "content": [
+                    {
+                        "type": "text",
+                        "text": "You Should annotate the following image and find anything which is broken or malfunctioning in it.",
+                    },
+                    {
+                        "type": "text",
+                        "text": "The length of your response should be maximum of 7 words but prefer shorter.",
+                    },
+                    {
+                        "type": "text",
+                        "text": "Respond in finnish",
+                    },
+                ],
+            },
+            {
+                "role": "user",
+                "content": [
+                    {
+                        "type": "image_url",
+                        "image_url": {
+                            "url": f"data:image/jpeg;base64,{base64.b64encode(contents).decode()}"
+                        },
+                    }
+                ],
+            },
+        ],
+    )
+    pred_text = openai_client.chat.completions.create(
         model="gpt-4-vision-preview",
         messages=[
             {
@@ -139,7 +172,7 @@ async def annotate_image(
             },
         ],
     )
-    response1 = openai_client.chat.completions.create(
+    pred_kind = openai_client.chat.completions.create(
         model="gpt-4-vision-preview",
         messages=[
             {
@@ -175,8 +208,9 @@ async def annotate_image(
     )
 
     return AnnotatedModel(
-        text=response0.choices[0].message.content,
-        kind=response1.choices[0].message.content,
+        text=(await pred_text).choices[0].message.content,
+        kind=(await pred_kind).choices[0].message.content,
+        title=(await pred_title).choices[0].message.content,
     )
 
 
