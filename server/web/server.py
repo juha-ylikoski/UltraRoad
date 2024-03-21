@@ -98,7 +98,6 @@ async def upvote(
 class AnnotatedModel(BaseModel):
     text: str
     kind: str
-    kind_resp: str
 
 
 @app.post("/annotate")
