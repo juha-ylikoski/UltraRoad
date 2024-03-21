@@ -64,14 +64,14 @@ async def upload_image(
     )
 
 
-@app.post("/posts")
+@app.get("/posts")
 async def get_posts(
     db: Session = Depends(get_db),
 ) -> schemas.BasePost:
     return models.get_posts(db)
 
 
-@app.post("/posts/{id}/img")
+@app.get("/posts/{id}/img")
 async def get_img(
     id: str,
     db: Session = Depends(get_db),
