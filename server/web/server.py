@@ -59,19 +59,51 @@ async def upload_image(
     x_address: Annotated[str, Header()],
     file: UploadFile = File(content_type="image/jpeg"),
     db: Session = Depends(get_db),
+    openai_client: AsyncOpenAI = Depends(get_openai),
 ) -> int:
     image = await file.read()
     if x_kind not in [x.name for x in models.get_kinds(db)]:
         raise HTTPException(status_code=400, detail="Kind not allowed!")
+    resp = await openai_client.chat.completions.create(
+        model="gpt-4-vision-preview",
+        messages=[
+            {
+                "role": "system",
+                "content": [
+                    {
+                        "type": "text",
+                        "text": f"Does a class {x_kind} describe the following image?",
+                    },
+                    {
+                        "type": "text",
+                        "text": "Answer with yes or no.",
+                    },
+                ],
+            },
+            {
+                "role": "user",
+                "content": [
+                    {
+                        "type": "image_url",
+                        "image_url": {
+                            "url": f"data:image/jpeg;base64,{base64.b64encode(image).decode()}"
+                        },
+                    }
+                ],
+            },
+        ],
+    )
+    if resp != "yes":
+        raise HTTPException(status_code=400, detail="Image does not represent kind.")
+
     return models.create_post(
         db, x_latitude, x_longitude, x_text, image, x_kind, x_title, x_address
     )
 
 
 @app.get("/posts")
-async def get_posts(
-    db: Session = Depends(get_db),
-) -> list[schemas.BasePost]:
+async def get_posts(db: Session = Depends(get_db)) -> list[schemas.BasePost]:
+
     return models.get_posts(db)
 
 
