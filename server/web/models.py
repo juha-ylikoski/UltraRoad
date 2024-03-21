@@ -56,17 +56,17 @@ def create_post(
 
 
 def get_posts(db: Session):
-    return (
+    return [
         schemas.BasePost.model_validate(x, from_attributes=True)
         for x in db.query(DBPost).all()
-    )
+    ]
 
 
 def get_kinds(db: Session):
-    return (
+    return [
         schemas.Kind.model_validate(x, from_attributes=True)
         for x in db.query(DBKind).all()
-    )
+    ]
 
 
 def create_kind(db: Session, kind: schemas.Kind):
