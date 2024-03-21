@@ -104,7 +104,7 @@ async def annotate_image(
 ) -> AnnotatedModel:
     contents = await file.read()
     image = Image.open(io.BytesIO(contents))
-    return AnnotatedModel(text=slipsum(), kind=random.choice(models.get_kinds(db)))
+    return AnnotatedModel(text=slipsum(), kind=random.choice(models.get_kinds(db)).name)
 
 
 @app.exception_handler(sqlalchemy.exc.IntegrityError)
