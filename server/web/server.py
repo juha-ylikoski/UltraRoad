@@ -1,4 +1,5 @@
 import base64
+import json
 from typing import Annotated
 from fastapi import (
     Depends,
@@ -76,7 +77,7 @@ async def upload_image(
                     },
                     {
                         "type": "text",
-                        "text": "Answer with yes or no.",
+                        "text": 'Answer with only "yes" or "no".',
                     },
                 ],
             },
@@ -146,109 +147,54 @@ async def annotate_image(
     contents = await file.read()
     # make sure it is image
     Image.open(io.BytesIO(contents))
-    kinds = ", ".join([x.name for x in models.get_kinds(db)])
-    pred_title = openai_client.chat.completions.create(
-        model="gpt-4-vision-preview",
-        messages=[
-            {
-                "role": "system",
-                "content": [
-                    {
-                        "type": "text",
-                        "text": "You Should annotate the following image and find anything which is broken or malfunctioning in it.",
-                    },
-                    {
-                        "type": "text",
-                        "text": "The length of your response should be maximum of 7 words but prefer shorter.",
-                    },
-                    {
-                        "type": "text",
-                        "text": "Respond in finnish",
-                    },
-                ],
-            },
-            {
-                "role": "user",
-                "content": [
-                    {
-                        "type": "image_url",
-                        "image_url": {
-                            "url": f"data:image/jpeg;base64,{base64.b64encode(contents).decode()}"
-                        },
-                    }
-                ],
-            },
-        ],
-    )
-    pred_text = openai_client.chat.completions.create(
-        model="gpt-4-vision-preview",
-        messages=[
-            {
-                "role": "system",
-                "content": [
-                    {
-                        "type": "text",
-                        "text": "You Should annotate the following image and find anything which is broken or malfunctioning in it.",
-                    },
-                    {
-                        "type": "text",
-                        "text": "Respond in finnish",
-                    },
-                ],
-            },
-            {
-                "role": "user",
-                "content": [
-                    {
-                        "type": "image_url",
-                        "image_url": {
-                            "url": f"data:image/jpeg;base64,{base64.b64encode(contents).decode()}"
-                        },
-                    }
-                ],
-            },
-        ],
-    )
-    pred_kind = openai_client.chat.completions.create(
-        model="gpt-4-vision-preview",
-        messages=[
-            {
-                "role": "system",
-                "content": [
-                    {
-                        "type": "text",
-                        "text": f"Inspect the following image for any defects broken objects or malfunctions. Can the following image be classified in the following classes {kinds}?",
-                    },
-                    {
-                        "type": "text",
-                        "text": "Respond only with the proper class label.",
-                    },
-                    {
-                        "type": "text",
-                        "text": "The classes are given in finnish and you should respond in finnish.",
-                    },
-                ],
-            },
-            {
-                "role": "user",
-                "content": [
-                    {
-                        "type": "image_url",
-                        "image_url": {
-                            "url": f"data:image/jpeg;base64,{base64.b64encode(contents).decode()}"
-                        },
-                    }
-                ],
-            },
-        ],
-        max_tokens=300,
-    )
+    kinds = [x.name for x in models.get_kinds(db)]
 
-    return AnnotatedModel(
-        text=(await pred_text).choices[0].message.content,
-        kind=(await pred_kind).choices[0].message.content,
-        title=(await pred_title).choices[0].message.content,
+    json_format = """{
+    "text": <Annotate the following image and find anything which is broken or malfunctioning in it>,
+    "title": <Title for the text field. The length of this field should be maximum of 7 words but prefer shorter>,
+    "kind": <Can the following image be classified in the following classes {kinds}? Only answer with one of the kinds and nothing else>
+    }""".replace(
+        "{kinds}", str(kinds)
     )
+    pred_json_raw = await openai_client.chat.completions.create(
+        model="gpt-4-vision-preview",
+        messages=[
+            {
+                "role": "system",
+                "content": [
+                    {
+                        "type": "text",
+                        "text": f"Respond with a json with following format: {json_format}",
+                    },
+                    {
+                        "type": "text",
+                        "text": "Respond in finnish",
+                    },
+                ],
+            },
+            {
+                "role": "user",
+                "content": [
+                    {
+                        "type": "image_url",
+                        "image_url": {
+                            "url": f"data:image/jpeg;base64,{base64.b64encode(contents).decode()}"
+                        },
+                    }
+                ],
+            },
+        ],
+    )
+    try:
+        pred_json = (
+            pred_json_raw.choices[0]
+            .message.content.replace("```json\n", "")
+            .replace("```", "")
+        )
+
+        return AnnotatedModel.model_validate_json(pred_json)
+    except Exception:
+        return AnnotatedModel(text="", kind=models.get_kinds(db)[0], title="")
 
 
 @app.exception_handler(sqlalchemy.exc.IntegrityError)
