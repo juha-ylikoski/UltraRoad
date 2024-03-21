@@ -26,7 +26,7 @@ class DBKind(Base):
 
 
 def get_post_img(db: Session, id: int):
-    return db.query(DBPost.data).filter(DBPost.id == id).one()
+    return db.query(DBPost.data).filter(DBPost.id == id).one()[0]
 
 
 def create_post(
