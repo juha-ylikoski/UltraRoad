@@ -30,11 +30,6 @@ async def index():
     return "foo"
 
 
-@app.get("/list")
-async def list_posts(db: Session = Depends(get_db)) -> list[schemas.Post]:
-    return models.get_posts(db)
-
-
 @app.get("/kinds")
 async def kinds(db: Session = Depends(get_db)) -> list[schemas.Kind]:
     return models.get_kinds(db)
