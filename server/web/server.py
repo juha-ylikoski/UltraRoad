@@ -67,7 +67,7 @@ async def upload_image(
 @app.get("/posts")
 async def get_posts(
     db: Session = Depends(get_db),
-) -> schemas.BasePost:
+) -> list[schemas.BasePost]:
     return models.get_posts(db)
 
 
