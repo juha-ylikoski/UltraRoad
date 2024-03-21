@@ -20,7 +20,6 @@ from sqlalchemy.orm import Session
 import sqlalchemy
 from openai import AsyncOpenAI
 
-from .annotate import slipsum
 from . import db, models
 from .db import get_db
 from . import schemas
