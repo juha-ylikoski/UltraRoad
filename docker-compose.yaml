@@ -9,7 +9,7 @@ services:
       - POSTGRES_PASSWORD=S3cret
       - POSTGRES_USER=citizix_user
       - POSTGRES_DB=db
-      - OPENAPI_API_KEY=${OPENAPI_API_KEY}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
 
   postgres:
     image: postgres:14-alpine
