@@ -12,6 +12,7 @@ from fastapi import (
 )
 from PIL import Image
 from fastapi.responses import JSONResponse
+from pydantic import BaseModel
 import uvicorn
 import io
 from sqlalchemy.orm import Session
@@ -91,14 +92,19 @@ async def upvote(
     models.upvote(db, id)
 
 
+class AnnotatedModel(BaseModel):
+    text: str
+    kind: str
+
+
 @app.post("/annotate")
 async def annotate_image(
     file: UploadFile = File(content_type="image/jpeg"),
     db: Session = Depends(get_db),
-) -> str:
+) -> AnnotatedModel:
     contents = await file.read()
     image = Image.open(io.BytesIO(contents))
-    return {"text": slipsum(), "kind": random.choice(models.get_kinds(db))}
+    return AnnotatedModel(text=slipsum(), kind=random.choice(models.get_kinds(db)))
 
 
 @app.exception_handler(sqlalchemy.exc.IntegrityError)
