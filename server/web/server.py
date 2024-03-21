@@ -44,6 +44,11 @@ async def new_kind(kind: schemas.Kind, db: Session = Depends(get_db)) -> int:
     return models.create_kind(db, kind)
 
 
+@app.delete("/kind/{name}")
+async def new_kind(name: str, db: Session = Depends(get_db)) -> int:
+    return models.create_kind(db, kind)
+
+
 @app.post("/post")
 async def upload_image(
     x_latitude: Annotated[float, Header()],

@@ -77,6 +77,11 @@ def create_kind(db: Session, kind: schemas.Kind):
     return kind.id
 
 
+def delete_kind(db: Session, name: str):
+    db.query(DBKind).filter(DBKind.name == name).delete()
+    db.commit()
+
+
 def upvote(db: Session, id: int):
     post = db.query(DBPost).filter(DBPost.id == id).one()
     post.score += 1
